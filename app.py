@@ -856,13 +856,30 @@ def build_timeline_bar_chart(df: pd.DataFrame, selected_metrics: list[str], gran
             title=granularity,
             axis=alt.Axis(labelAngle=-35),
         ),
+        xOffset=alt.XOffset("metric:N", sort=None),
         y=alt.Y("score:Q", title="Score", scale=alt.Scale(domain=[-100, 100])),
         color=alt.Color("metric:N", scale=color_scale, legend=alt.Legend(title="Metric")),
         tooltip=["period_label:N", "metric:N", "score:Q"],
     )
 
-    return base.mark_bar(opacity=0.9, cornerRadiusTopLeft=8, cornerRadiusTopRight=8).properties(
+    bars = base.mark_bar(opacity=0.9, cornerRadiusTopLeft=8, cornerRadiusTopRight=8)
+    labels = (
+        alt.Chart(plot_df)
+        .mark_text(dy=-8, fontSize=12, fontWeight="bold", color="#241138")
+        .encode(
+            x=alt.X(
+                "period_label:N",
+                sort=alt.SortField(field="period_start", order="ascending"),
+            ),
+            xOffset=alt.XOffset("metric:N", sort=None),
+            y=alt.Y("score:Q"),
+            text=alt.Text("score:Q", format=".1f"),
+        )
+    )
+
+    return (bars + labels).properties(
         height=430,
+        width=900,
         title="Timeline comparison",
     )
 

@@ -861,13 +861,8 @@ def build_timeline_bar_chart(df: pd.DataFrame, selected_metrics: list[str], gran
         tooltip=["period_label:N", "metric:N", "score:Q"],
     )
 
-<<<<<<< HEAD
     return base.mark_bar(opacity=0.9, cornerRadiusTopLeft=8, cornerRadiusTopRight=8).properties(
         height=430,
-=======
-    return base.mark_bar(opacity=0.9, cornerRadiusTopLeft=6, cornerRadiusTopRight=6).properties(
-        height=320,
->>>>>>> 582f15d25a7effb27a81d38a5ecf85d8d3477f9f
         title="Timeline comparison",
     )
 

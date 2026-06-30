@@ -762,7 +762,26 @@ def build_timeline_df(ratings_df: pd.DataFrame, start_date: date, end_date: date
 
     template = pd.DataFrame(template_rows)
     merged = template.merge(scored_df, on=["period_start", "period_label", "metric"], how="left")
-    return merged
+    merged["period_start"] = pd.to_datetime(merged["period_start"], errors="coerce")
+    return merged.sort_values(["period_start", "metric"]).reset_index(drop=True)
+
+
+def build_period_sort_order(df: pd.DataFrame) -> list[str]:
+    if df.empty:
+        return []
+
+    ordered = (
+        df.dropna(subset=["period_start"])
+        .drop_duplicates(subset=["period_start"])
+        .copy()
+    )
+    if ordered.empty:
+        return []
+
+    ordered["period_start"] = pd.to_datetime(ordered["period_start"], errors="coerce")
+    ordered = ordered.dropna(subset=["period_start"]).sort_values("period_start")
+    return ordered["period_label"].astype(str).tolist()
+
 
 def build_timeline_chart(df: pd.DataFrame, selected_metrics: list[str], granularity: str) -> alt.Chart:
     plot_df = df[df["metric"].isin(selected_metrics)].copy()
@@ -783,9 +802,10 @@ def build_timeline_chart(df: pd.DataFrame, selected_metrics: list[str], granular
     wide_df["y0"] = -100
     wide_df["y1"] = 100
 
+    sort_order = build_period_sort_order(plot_df)
     x_enc = alt.X(
         "period_label:N",
-        sort=alt.SortField(field="period_start", order="ascending"),
+        sort=sort_order if sort_order else None,
         title=granularity,
         axis=alt.Axis(labelAngle=-35),
     )
@@ -849,13 +869,16 @@ def build_timeline_bar_chart(df: pd.DataFrame, selected_metrics: list[str], gran
         range=["#2563EB", "#F59E0B", "#10B981"],
     )
 
+    sort_order = build_period_sort_order(plot_df)
+    x_enc = alt.X(
+        "period_label:N",
+        sort=sort_order if sort_order else None,
+        title=granularity,
+        axis=alt.Axis(labelAngle=-35),
+    )
+
     base = alt.Chart(plot_df).encode(
-        x=alt.X(
-            "period_label:N",
-            sort=alt.SortField(field="period_start", order="ascending"),
-            title=granularity,
-            axis=alt.Axis(labelAngle=-35),
-        ),
+        x=x_enc,
         xOffset=alt.XOffset("metric:N", sort=None),
         y=alt.Y("score:Q", title="Score", scale=alt.Scale(domain=[-100, 100])),
         color=alt.Color("metric:N", scale=color_scale, legend=alt.Legend(title="Metric")),
@@ -867,10 +890,7 @@ def build_timeline_bar_chart(df: pd.DataFrame, selected_metrics: list[str], gran
         alt.Chart(plot_df)
         .mark_text(dy=-8, fontSize=12, fontWeight="bold", color="#241138")
         .encode(
-            x=alt.X(
-                "period_label:N",
-                sort=alt.SortField(field="period_start", order="ascending"),
-            ),
+            x=x_enc,
             xOffset=alt.XOffset("metric:N", sort=None),
             y=alt.Y("score:Q"),
             text=alt.Text("score:Q", format=".1f"),
